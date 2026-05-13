@@ -1,0 +1,111 @@
+.about {
+  background: #0a0a0a;
+  min-height: 100vh;
+}
+.hero {
+  background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+  padding: 80px 20px;
+  text-align: center;
+}
+.hero h1 {
+  font-size: 56px;
+  margin-bottom: 20px;
+  background: linear-gradient(45deg, #fff, #ff3333);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero p {
+  font-size: 20px;
+  color: #aaa;
+}
+.content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 60px 20px;
+}
+.bio {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 50px;
+  margin-bottom: 80px;
+}
+.bioImage img {
+  width: 100%;
+  border-radius: 20px;
+  box-shadow: 0 0 30px rgba(255,51,51,0.3);
+}
+.bioText h2 {
+  font-size: 36px;
+  margin-bottom: 20px;
+  color: #ff3333;
+}
+.bioText p {
+  color: #ccc;
+  line-height: 1.8;
+  margin-bottom: 20px;
+}
+.achievements, .certificates, .social {
+  margin-bottom: 80px;
+  text-align: center;
+}
+.achievements h2, .certificates h2, .social h2 {
+  font-size: 36px;
+  margin-bottom: 40px;
+}
+.achievementsGrid, .certsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 30px;
+}
+.achievementCard, .cert {
+  background: #1a1a1a;
+  padding: 30px;
+  border-radius: 15px;
+  font-size: 18px;
+  transition: all 0.3s;
+}
+.achievementCard:hover, .cert:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 10px 30px rgba(255,51,51,0.3);
+  color: #ff3333;
+}
+.socialLinks {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.socialLinks a {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: #ff3333;
+  padding: 12px 30px;
+  border-radius: 50px;
+  color: white;
+  text-decoration: none;
+  transition: 0.3s;
+}
+
+.socialLinks a img {
+  width: 20px;
+  height: 20px;
+  display: inline-block;
+}
+
+.socialLinks a:hover {
+  background: #cc0000;
+  transform: scale(1.05);
+}
+@media (max-width: 768px) {
+  .hero h1 {
+    font-size: 36px;
+  }
+  .bio {
+    grid-template-columns: 1fr;
+  }
+  .achievements h2, .certificates h2 {
+    font-size: 28px;
+  }
+}

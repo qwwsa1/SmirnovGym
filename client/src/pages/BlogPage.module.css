@@ -1,0 +1,177 @@
+.blog {
+  background: #0a0a0a;
+  min-height: 100vh;
+}
+.hero {
+  background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+  padding: 80px 20px;
+  text-align: center;
+}
+.hero h1 {
+  font-size: 56px;
+  margin-bottom: 20px;
+  background: linear-gradient(45deg, #fff, #ff3333);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero p {
+  font-size: 20px;
+  color: #aaa;
+}
+.content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 60px 20px;
+}
+.postsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 30px;
+  margin-bottom: 50px;
+}
+.postCard {
+  background: #1a1a1a;
+  border-radius: 15px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.postCard:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 10px 30px rgba(255,51,51,0.3);
+}
+/* Единый стиль для превью видео и обложек */
+.videoPreview {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  background: #0a0a0a;
+  overflow: hidden;
+}
+.videoPreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* Стиль для iframe внутри карточки */
+.videoPreview iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  pointer-events: none; /* Чтобы клик по видео открывал модалку, а не запускал видео */
+}
+.playBtn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60px;
+  height: 60px;
+  background: rgba(255,51,51,0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: white;
+  transition: 0.3s;
+  pointer-events: none; /* Чтобы кнопка не перехватывала клик */
+}
+.postCard:hover .playBtn {
+  transform: translate(-50%, -50%) scale(1.1);
+}
+.postInfo {
+  padding: 20px;
+}
+.postInfo h3 {
+  margin-bottom: 10px;
+  color: #ff3333;
+}
+.postInfo p {
+  color: #ccc;
+  margin-bottom: 15px;
+}
+.stats {
+  display: flex;
+  gap: 20px;
+  color: #666;
+  font-size: 14px;
+}
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+}
+.pagination button {
+  background: #ff3333;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+}
+.modalContent {
+  background: #1a1a1a;
+  border-radius: 15px;
+  max-width: 800px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 30px;
+  position: relative;
+}
+.closeBtn {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  background: none;
+  border: none;
+  font-size: 30px;
+  color: white;
+  cursor: pointer;
+}
+.modalContent h2 {
+  margin-bottom: 20px;
+  color: #ff3333;
+  padding-right: 30px;
+}
+.modalContent iframe {
+  margin: 20px 0;
+  height: 400px;
+  width: 100%;
+  border: none;
+}
+@media (max-width: 768px) {
+  .hero h1 {
+    font-size: 36px;
+  }
+  .postsGrid {
+    grid-template-columns: 1fr;
+  }
+  .videoPreview {
+    height: 180px;
+  }
+  .modalContent iframe {
+    height: 250px;
+  }
+}

@@ -1,0 +1,131 @@
+.programs {
+  background: #0a0a0a;
+  min-height: 100vh;
+}
+.hero {
+  background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+  padding: 80px 20px;
+  text-align: center;
+}
+.hero h1 {
+  font-size: 56px;
+  margin-bottom: 20px;
+  background: linear-gradient(45deg, #fff, #ff3333);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero p {
+  font-size: 20px;
+  color: #aaa;
+}
+.content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 60px 20px;
+}
+.programsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 30px;
+  margin-bottom: 80px;
+}
+.programCard {
+  background: #1a1a1a;
+  border-radius: 15px;
+  overflow: hidden;
+  transition: all 0.3s;
+  border: 1px solid rgba(255,51,51,0.2);
+}
+.programCard:hover {
+  transform: translateY(-10px);
+  border-color: #ff3333;
+  box-shadow: 0 10px 30px rgba(255,51,51,0.3);
+}
+.programHeader {
+  background: linear-gradient(135deg, #ff3333, #cc0000);
+  padding: 30px;
+  text-align: center;
+  color: white;
+}
+.programHeader h3 {
+  font-size: 28px;
+  margin-bottom: 10px;
+}
+.price {
+  font-size: 48px;
+  font-weight: bold;
+  margin: 10px 0;
+}
+.duration {
+  font-size: 14px;
+  opacity: 0.9;
+}
+.programBody {
+  padding: 30px;
+}
+.programBody p {
+  color: #ccc;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+.features {
+  list-style: none;
+  padding: 0;
+}
+.features li {
+  margin-bottom: 10px;
+  color: #00ff88;
+}
+.programFooter {
+  padding: 0 30px 30px;
+}
+.bookBtn {
+  width: 100%;
+  background: #ff3333;
+  color: white;
+  border: none;
+  padding: 15px;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: bold;
+  transition: 0.3s;
+}
+.bookBtn:hover {
+  background: #cc0000;
+  transform: scale(1.02);
+}
+.faq {
+  text-align: center;
+}
+.faq h2 {
+  font-size: 36px;
+  margin-bottom: 40px;
+}
+.faqGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px;
+}
+.faqItem {
+  background: #1a1a1a;
+  padding: 30px;
+  border-radius: 15px;
+  text-align: left;
+}
+.faqItem h4 {
+  color: #ff3333;
+  margin-bottom: 15px;
+  font-size: 20px;
+}
+.faqItem p {
+  color: #aaa;
+}
+@media (max-width: 768px) {
+  .hero h1 {
+    font-size: 36px;
+  }
+  .programsGrid {
+    grid-template-columns: 1fr;
+  }
+}
