@@ -17,10 +17,6 @@ export default function AdminPage() {
   const [uploading, setUploading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    loadData();
-  }, [activeTab]);
-
   const loadData = async () => {
     if (activeTab === 'posts') {
       const res = await API.get('/posts?page=1&limit=100');
@@ -43,6 +39,11 @@ export default function AdminPage() {
       setContacts(res.data);
     }
   };
+
+  // ✅ ИСПРАВЛЕНО: добавлена зависимость loadData
+  useEffect(() => {
+    loadData();
+  }, [activeTab, loadData]);
 
   const uploadImage = async (file) => {
     const formData = new FormData();

@@ -10,10 +10,6 @@ export default function ProfilePage() {
   const [reviewRating, setReviewRating] = useState(5);
   const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
   const loadData = async () => {
     const bookingsRes = await API.get('/bookings/my');
     setBookings(bookingsRes.data);
@@ -22,6 +18,11 @@ export default function ProfilePage() {
     const userReviews = reviewsRes.data.filter(r => r.full_name === user?.full_name);
     setReviews(userReviews);
   };
+
+  // ✅ ИСПРАВЛЕНО: добавлена зависимость loadData
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const cancelBooking = async (id) => {
     if (window.confirm('Отменить запись?')) {

@@ -4,7 +4,7 @@ import { AuthContext } from '../App';
 import styles from './BookingPage.module.css';
 
 export default function BookingPage() {
-  const { API, user } = useContext(AuthContext);
+  const { API } = useContext(AuthContext);  // ✅ УДАЛЕНА неиспользуемая переменная user
   const [programs, setPrograms] = useState([]);
   const [selectedProgram, setSelectedProgram] = useState('');
   const [date, setDate] = useState('');
