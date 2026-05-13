@@ -12,8 +12,11 @@ import ProfilePage from './pages/ProfilePage';
 import AdminPage from './pages/AdminPage';
 import LoginPage from './pages/LoginPage';
 
-// API настройки
-const API = axios.create({ baseURL: 'http://localhost:5000/api' });
+// API настройки — для Railway используем относительный путь
+const API = axios.create({ 
+  baseURL: process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5000/api'
+});
+
 API.interceptors.request.use((req) => {
   const token = localStorage.getItem('token');
   if (token) req.headers.Authorization = `Bearer ${token}`;
@@ -22,7 +25,7 @@ API.interceptors.request.use((req) => {
 
 // Auth Context
 const AuthContext = createContext();
-export { AuthContext };  // Экспортируем контекст
+export { AuthContext };
 
 function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
