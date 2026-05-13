@@ -1,0 +1,13 @@
+{
+  "name": "smirnov-gym",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "cd client && npm install && npm run build",
+    "start": "cd server && npm install && node index.js",
+    "postinstall": "cd server && npm install"
+  },
+  "engines": {
+    "node": "20.x",
+    "npm": "10.x"
+  }
+}
