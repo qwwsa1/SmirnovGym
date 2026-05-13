@@ -2,19 +2,18 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const sqlite3 = require('sqlite3');
-const { open } = require('sqlite');
+const { Pool } = require('pg');
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 
 const app = express();
-const PORT = process.env.PORT || 5000;  // ← ИСПРАВЛЕНО: берём порт из окружения
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';  // ← ИСПРАВЛЕНО: из окружения
+const PORT = process.env.PORT || 5000;
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
 
 // Middleware
 app.use(cors({
-  origin: '*',  // ← ДЛЯ RAILWAY: разрешаем все источники
+  origin: '*',
   credentials: true
 }));
 app.use(express.json());
@@ -56,123 +55,126 @@ const upload = multer({
   }
 });
 
-// ==================== БАЗА ДАННЫХ ====================
-let db;
+// ==================== ПОДКЛЮЧЕНИЕ К POSTGRESQL ====================
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/fitnes',
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
+// ==================== ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ ====================
 async function initializeDB() {
-  db = await open({
-    filename: path.join(__dirname, 'fitnes.db'),
-    driver: sqlite3.Database
-  });
-
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL,
-      full_name TEXT NOT NULL,
-      role TEXT DEFAULT 'user',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS programs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      description TEXT,
-      price INTEGER,
-      duration TEXT,
-      is_active INTEGER DEFAULT 1
-    );
-
-    CREATE TABLE IF NOT EXISTS posts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL,
-      content TEXT,
-      video_url TEXT,
-      cover_image TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS bookings (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      program_id INTEGER NOT NULL,
-      booking_date DATE NOT NULL,
-      booking_time TEXT NOT NULL,
-      status TEXT DEFAULT 'pending',
-      comment TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id),
-      FOREIGN KEY (program_id) REFERENCES programs(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS reviews (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      text TEXT NOT NULL,
-      rating INTEGER CHECK(rating >= 1 AND rating <= 5),
-      is_approved INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS contacts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      telegram TEXT,
-      vk TEXT,
-      whatsapp TEXT,
-      email TEXT
-    );
-  `);
-
+  const client = await pool.connect();
+  
   try {
-    await db.exec(`ALTER TABLE posts ADD COLUMN cover_image TEXT`);
-  } catch (e) {}
+    // Создание таблиц
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        full_name TEXT NOT NULL,
+        role TEXT DEFAULT 'user',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
 
-  const adminExists = await db.get('SELECT * FROM users WHERE email = ?', ['admin@fitnes.com']);
-  if (!adminExists) {
-    const hashedPassword = await bcrypt.hash('admin123', 10);
-    await db.run(
-      'INSERT INTO users (email, password, full_name, role) VALUES (?, ?, ?, ?)',
-      ['admin@fitnes.com', hashedPassword, 'Администратор', 'admin']
-    );
-    console.log('✅ Админ создан: admin@fitnes.com / admin123');
+      CREATE TABLE IF NOT EXISTS programs (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        price INTEGER,
+        duration TEXT,
+        is_active INTEGER DEFAULT 1
+      );
+
+      CREATE TABLE IF NOT EXISTS posts (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        content TEXT,
+        video_url TEXT,
+        cover_image TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS bookings (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        program_id INTEGER NOT NULL REFERENCES programs(id) ON DELETE CASCADE,
+        booking_date DATE NOT NULL,
+        booking_time TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        comment TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS reviews (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        text TEXT NOT NULL,
+        rating INTEGER CHECK(rating >= 1 AND rating <= 5),
+        is_approved INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS contacts (
+        id SERIAL PRIMARY KEY,
+        telegram TEXT,
+        vk TEXT,
+        whatsapp TEXT,
+        email TEXT
+      );
+    `);
+
+    // Добавляем тестового админа
+    const adminExists = await client.query('SELECT * FROM users WHERE email = $1', ['admin@fitnes.com']);
+    if (adminExists.rows.length === 0) {
+      const hashedPassword = await bcrypt.hash('admin123', 10);
+      await client.query(
+        'INSERT INTO users (email, password, full_name, role) VALUES ($1, $2, $3, $4)',
+        ['admin@fitnes.com', hashedPassword, 'Администратор', 'admin']
+      );
+      console.log('✅ Админ создан: admin@fitnes.com / admin123');
+    }
+
+    // Добавляем тестовые программы
+    const programsCount = await client.query('SELECT COUNT(*) as count FROM programs');
+    if (parseInt(programsCount.rows[0].count) === 0) {
+      await client.query(
+        'INSERT INTO programs (name, description, price, duration) VALUES ($1, $2, $3, $4)',
+        ['Старт', 'Домашние тренировки без инвентаря. Идеально для новичков.', 2990, '1 месяц']
+      );
+      await client.query(
+        'INSERT INTO programs (name, description, price, duration) VALUES ($1, $2, $3, $4)',
+        ['Прокачка', 'Интенсивные тренировки с гантелями и резиной.', 4990, '1 месяц']
+      );
+      await client.query(
+        'INSERT INTO programs (name, description, price, duration) VALUES ($1, $2, $3, $4)',
+        ['VIP', 'Индивидуальные тренировки 1-на-1 с тренером.', 9990, '1 месяц']
+      );
+      console.log('✅ Добавлены тестовые программы');
+    }
+
+    // Добавляем тестовый пост
+    const postsCount = await client.query('SELECT COUNT(*) as count FROM posts');
+    if (parseInt(postsCount.rows[0].count) === 0) {
+      await client.query(
+        'INSERT INTO posts (title, content, video_url, cover_image) VALUES ($1, $2, $3, $4)',
+        ['Первая тренировка', 'Как начать заниматься и не бросить', 'https://vk.com/video-238431227_456239024', null]
+      );
+    }
+
+    // Добавляем контакты по умолчанию
+    const contactsCount = await client.query('SELECT COUNT(*) as count FROM contacts');
+    if (parseInt(contactsCount.rows[0].count) === 0) {
+      await client.query(
+        'INSERT INTO contacts (telegram, vk, whatsapp, email) VALUES ($1, $2, $3, $4)',
+        ['https://t.me/trainer', 'https://vk.com/trainer', '+79991234567', 'trainer@fitnes.com']
+      );
+    }
+
+    console.log('✅ База данных PostgreSQL готова');
+  } finally {
+    client.release();
   }
-
-  const programsCount = await db.get('SELECT COUNT(*) as count FROM programs');
-  if (programsCount.count === 0) {
-    await db.run(
-      'INSERT INTO programs (name, description, price, duration) VALUES (?, ?, ?, ?)',
-      ['Старт', 'Домашние тренировки без инвентаря. Идеально для новичков.', 2990, '1 месяц']
-    );
-    await db.run(
-      'INSERT INTO programs (name, description, price, duration) VALUES (?, ?, ?, ?)',
-      ['Прокачка', 'Интенсивные тренировки с гантелями и резиной.', 4990, '1 месяц']
-    );
-    await db.run(
-      'INSERT INTO programs (name, description, price, duration) VALUES (?, ?, ?, ?)',
-      ['VIP', 'Индивидуальные тренировки 1-на-1 с тренером.', 9990, '1 месяц']
-    );
-    console.log('✅ Добавлены тестовые программы');
-  }
-
-  const postsCount = await db.get('SELECT COUNT(*) as count FROM posts');
-  if (postsCount.count === 0) {
-    await db.run(
-      'INSERT INTO posts (title, content, video_url, cover_image) VALUES (?, ?, ?, ?)',
-      ['Первая тренировка', 'Как начать заниматься и не бросить', 'https://vk.com/video-238431227_456239024', null]
-    );
-  }
-
-  const contactsCount = await db.get('SELECT COUNT(*) as count FROM contacts');
-  if (contactsCount.count === 0) {
-    await db.run(
-      'INSERT INTO contacts (telegram, vk, whatsapp, email) VALUES (?, ?, ?, ?)',
-      ['https://t.me/trainer', 'https://vk.com/trainer', '+79991234567', 'trainer@fitnes.com']
-    );
-  }
-
-  console.log('✅ База данных готова');
 }
 
 // ==================== MIDDLEWARE ====================
@@ -219,8 +221,8 @@ app.post('/api/auth/register', async (req, res) => {
   
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-    await db.run(
-      'INSERT INTO users (email, password, full_name) VALUES (?, ?, ?)',
+    await pool.query(
+      'INSERT INTO users (email, password, full_name) VALUES ($1, $2, $3)',
       [email, hashedPassword, full_name]
     );
     res.status(201).json({ message: 'Пользователь создан' });
@@ -232,7 +234,9 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
 
-  const user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
+  const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+  const user = result.rows[0];
+  
   if (!user) {
     return res.status(401).json({ error: 'Неверный email или пароль' });
   }
@@ -260,8 +264,8 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 app.get('/api/auth/profile', authenticateToken, async (req, res) => {
-  const user = await db.get('SELECT id, email, full_name, role FROM users WHERE id = ?', [req.user.id]);
-  res.json(user);
+  const result = await pool.query('SELECT id, email, full_name, role FROM users WHERE id = $1', [req.user.id]);
+  res.json(result.rows[0]);
 });
 
 // ==================== UPLOAD РОУТ ====================
@@ -279,13 +283,14 @@ app.get('/api/posts', async (req, res) => {
   const limit = parseInt(req.query.limit) || 6;
   const offset = (page - 1) * limit;
 
-  const posts = await db.all(
-    'SELECT * FROM posts ORDER BY created_at DESC LIMIT ? OFFSET ?',
+  const result = await pool.query(
+    'SELECT * FROM posts ORDER BY created_at DESC LIMIT $1 OFFSET $2',
     [limit, offset]
   );
-  const total = await db.get('SELECT COUNT(*) as count FROM posts');
+  const totalResult = await pool.query('SELECT COUNT(*) as count FROM posts');
+  const total = parseInt(totalResult.rows[0].count);
   
-  const postsWithEmbed = posts.map(post => {
+  const postsWithEmbed = result.rows.map(post => {
     let video_embed = null;
     if (post.video_url) {
       const videoId = getVKVideoId(post.video_url);
@@ -299,131 +304,131 @@ app.get('/api/posts', async (req, res) => {
   
   res.json({
     posts: postsWithEmbed,
-    total: total.count,
+    total: total,
     page,
-    totalPages: Math.ceil(total.count / limit)
+    totalPages: Math.ceil(total / limit)
   });
 });
 
 app.get('/api/posts/latest', async (req, res) => {
-  const posts = await db.all(
+  const result = await pool.query(
     'SELECT * FROM posts ORDER BY created_at DESC LIMIT 3'
   );
-  res.json(posts);
+  res.json(result.rows);
 });
 
 app.post('/api/posts', authenticateToken, requireAdmin, async (req, res) => {
   const { title, content, video_url, cover_image } = req.body;
-  const result = await db.run(
-    'INSERT INTO posts (title, content, video_url, cover_image) VALUES (?, ?, ?, ?)',
+  const result = await pool.query(
+    'INSERT INTO posts (title, content, video_url, cover_image) VALUES ($1, $2, $3, $4) RETURNING id',
     [title, content, video_url, cover_image || null]
   );
-  res.json({ id: result.lastID, message: 'Пост создан' });
+  res.json({ id: result.rows[0].id, message: 'Пост создан' });
 });
 
 app.put('/api/posts/:id', authenticateToken, requireAdmin, async (req, res) => {
   const { title, content, video_url, cover_image } = req.body;
-  await db.run(
-    'UPDATE posts SET title = ?, content = ?, video_url = ?, cover_image = ? WHERE id = ?',
+  await pool.query(
+    'UPDATE posts SET title = $1, content = $2, video_url = $3, cover_image = $4 WHERE id = $5',
     [title, content, video_url, cover_image, req.params.id]
   );
   res.json({ message: 'Пост обновлен' });
 });
 
 app.delete('/api/posts/:id', authenticateToken, requireAdmin, async (req, res) => {
-  await db.run('DELETE FROM posts WHERE id = ?', [req.params.id]);
+  await pool.query('DELETE FROM posts WHERE id = $1', [req.params.id]);
   res.json({ message: 'Пост удален' });
 });
 
 // ==================== PROGRAMS РОУТЫ ====================
 app.get('/api/programs', async (req, res) => {
-  const programs = await db.all('SELECT * FROM programs WHERE is_active = 1');
-  res.json(programs);
+  const result = await pool.query('SELECT * FROM programs WHERE is_active = 1');
+  res.json(result.rows);
 });
 
 app.post('/api/programs', authenticateToken, requireAdmin, async (req, res) => {
   const { name, description, price, duration } = req.body;
-  const result = await db.run(
-    'INSERT INTO programs (name, description, price, duration) VALUES (?, ?, ?, ?)',
+  const result = await pool.query(
+    'INSERT INTO programs (name, description, price, duration) VALUES ($1, $2, $3, $4) RETURNING id',
     [name, description, price, duration]
   );
-  res.json({ id: result.lastID, message: 'Программа создана' });
+  res.json({ id: result.rows[0].id, message: 'Программа создана' });
 });
 
 app.put('/api/programs/:id', authenticateToken, requireAdmin, async (req, res) => {
   const { name, description, price, duration, is_active } = req.body;
-  await db.run(
-    'UPDATE programs SET name = ?, description = ?, price = ?, duration = ?, is_active = ? WHERE id = ?',
+  await pool.query(
+    'UPDATE programs SET name = $1, description = $2, price = $3, duration = $4, is_active = $5 WHERE id = $6',
     [name, description, price, duration, is_active, req.params.id]
   );
   res.json({ message: 'Программа обновлена' });
 });
 
 app.delete('/api/programs/:id', authenticateToken, requireAdmin, async (req, res) => {
-  await db.run('DELETE FROM programs WHERE id = ?', [req.params.id]);
+  await pool.query('DELETE FROM programs WHERE id = $1', [req.params.id]);
   res.json({ message: 'Программа удалена' });
 });
 
 // ==================== BOOKINGS РОУТЫ ====================
 app.get('/api/bookings/my', authenticateToken, async (req, res) => {
-  const bookings = await db.all(`
+  const result = await pool.query(`
     SELECT b.*, p.name as program_name, p.price 
     FROM bookings b
     JOIN programs p ON b.program_id = p.id
-    WHERE b.user_id = ?
+    WHERE b.user_id = $1
     ORDER BY b.booking_date DESC
   `, [req.user.id]);
-  res.json(bookings);
+  res.json(result.rows);
 });
 
 app.get('/api/bookings/all', authenticateToken, requireAdmin, async (req, res) => {
-  const bookings = await db.all(`
+  const result = await pool.query(`
     SELECT b.*, u.full_name, u.email, p.name as program_name
     FROM bookings b
     JOIN users u ON b.user_id = u.id
     JOIN programs p ON b.program_id = p.id
     ORDER BY b.booking_date DESC
   `);
-  res.json(bookings);
+  res.json(result.rows);
 });
 
 app.post('/api/bookings', authenticateToken, async (req, res) => {
   const { program_id, booking_date, booking_time, comment } = req.body;
   
-  const existing = await db.get(
-    'SELECT * FROM bookings WHERE user_id = ? AND booking_date = ? AND booking_time = ?',
+  const existing = await pool.query(
+    'SELECT * FROM bookings WHERE user_id = $1 AND booking_date = $2 AND booking_time = $3',
     [req.user.id, booking_date, booking_time]
   );
   
-  if (existing) {
+  if (existing.rows.length > 0) {
     return res.status(400).json({ error: 'Вы уже записаны на это время' });
   }
   
-  const result = await db.run(
-    'INSERT INTO bookings (user_id, program_id, booking_date, booking_time, comment) VALUES (?, ?, ?, ?, ?)',
+  const result = await pool.query(
+    'INSERT INTO bookings (user_id, program_id, booking_date, booking_time, comment) VALUES ($1, $2, $3, $4, $5) RETURNING id',
     [req.user.id, program_id, booking_date, booking_time, comment]
   );
-  res.json({ id: result.lastID, message: 'Запись создана' });
+  res.json({ id: result.rows[0].id, message: 'Запись создана' });
 });
 
 app.put('/api/bookings/:id/status', authenticateToken, requireAdmin, async (req, res) => {
   const { status } = req.body;
-  await db.run('UPDATE bookings SET status = ? WHERE id = ?', [status, req.params.id]);
+  await pool.query('UPDATE bookings SET status = $1 WHERE id = $2', [status, req.params.id]);
   res.json({ message: 'Статус обновлен' });
 });
 
 app.delete('/api/bookings/:id', authenticateToken, async (req, res) => {
-  const booking = await db.get('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
-  if (!booking || (booking.user_id !== req.user.id && req.user.role !== 'admin')) {
+  const booking = await pool.query('SELECT * FROM bookings WHERE id = $1', [req.params.id]);
+  if (booking.rows.length === 0 || (booking.rows[0].user_id !== req.user.id && req.user.role !== 'admin')) {
     return res.status(403).json({ error: 'Нет доступа' });
   }
-  await db.run('DELETE FROM bookings WHERE id = ?', [req.params.id]);
+  await pool.query('DELETE FROM bookings WHERE id = $1', [req.params.id]);
   res.json({ message: 'Запись отменена' });
 });
 
 // ==================== REVIEWS РОУТЫ ====================
 app.get('/api/reviews', async (req, res) => {
-  const reviews = await db.all(`
+  const result = await pool.query(`
     SELECT r.*, u.full_name 
     FROM reviews r
     JOIN users u ON r.user_id = u.id
@@ -431,66 +436,67 @@ app.get('/api/reviews', async (req, res) => {
     ORDER BY r.created_at DESC
     LIMIT 10
   `);
-  res.json(reviews);
+  res.json(result.rows);
 });
 
 app.get('/api/reviews/pending', authenticateToken, requireAdmin, async (req, res) => {
-  const reviews = await db.all(`
+  const result = await pool.query(`
     SELECT r.*, u.full_name, u.email
     FROM reviews r
     JOIN users u ON r.user_id = u.id
     WHERE r.is_approved = 0
     ORDER BY r.created_at DESC
   `);
-  res.json(reviews);
+  res.json(result.rows);
 });
 
 app.post('/api/reviews', authenticateToken, async (req, res) => {
   const { text, rating } = req.body;
-  const result = await db.run(
-    'INSERT INTO reviews (user_id, text, rating) VALUES (?, ?, ?)',
+  const result = await pool.query(
+    'INSERT INTO reviews (user_id, text, rating) VALUES ($1, $2, $3) RETURNING id',
     [req.user.id, text, rating]
   );
-  res.json({ id: result.lastID, message: 'Отзыв отправлен на модерацию' });
+  res.json({ id: result.rows[0].id, message: 'Отзыв отправлен на модерацию' });
 });
 
 app.put('/api/reviews/:id/approve', authenticateToken, requireAdmin, async (req, res) => {
-  await db.run('UPDATE reviews SET is_approved = 1 WHERE id = ?', [req.params.id]);
+  await pool.query('UPDATE reviews SET is_approved = 1 WHERE id = $1', [req.params.id]);
   res.json({ message: 'Отзыв опубликован' });
 });
 
 app.delete('/api/reviews/:id', authenticateToken, requireAdmin, async (req, res) => {
-  await db.run('DELETE FROM reviews WHERE id = ?', [req.params.id]);
+  await pool.query('DELETE FROM reviews WHERE id = $1', [req.params.id]);
   res.json({ message: 'Отзыв удален' });
 });
 
 // ==================== CONTACTS РОУТЫ ====================
 app.get('/api/contacts', async (req, res) => {
-  let contacts = await db.get('SELECT * FROM contacts WHERE id = 1');
+  let result = await pool.query('SELECT * FROM contacts WHERE id = 1');
+  let contacts = result.rows[0];
+  
   if (!contacts) {
-    await db.run(
-      'INSERT INTO contacts (telegram, vk, whatsapp, email) VALUES (?, ?, ?, ?)',
+    await pool.query(
+      'INSERT INTO contacts (telegram, vk, whatsapp, email) VALUES ($1, $2, $3, $4)',
       ['https://t.me/trainer', 'https://vk.com/trainer', '+79991234567', 'trainer@fitnes.com']
     );
-    contacts = await db.get('SELECT * FROM contacts WHERE id = 1');
+    result = await pool.query('SELECT * FROM contacts WHERE id = 1');
+    contacts = result.rows[0];
   }
   res.json(contacts);
 });
 
 app.put('/api/contacts', authenticateToken, requireAdmin, async (req, res) => {
   const { telegram, vk, whatsapp, email } = req.body;
-  await db.run(
-    `UPDATE contacts SET telegram = ?, vk = ?, whatsapp = ?, email = ? WHERE id = 1`,
+  await pool.query(
+    `UPDATE contacts SET telegram = $1, vk = $2, whatsapp = $3, email = $4 WHERE id = 1`,
     [telegram, vk, whatsapp, email]
   );
   res.json({ message: 'Контакты обновлены' });
 });
 
 // ==================== РАЗДАЧА СТАТИКИ ДЛЯ ПРОДАКШН ====================
-// Раздаём собранный React клиент
 app.use(express.static(path.join(__dirname, '../client/build')));
 
-// Все остальные маршруты отдаём index.html (для React Router)
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
 });
