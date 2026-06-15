@@ -40,7 +40,6 @@ export default function AdminPage() {
     }
   };
 
-  // ✅ ИСПРАВЛЕНО: добавлена зависимость loadData
   useEffect(() => {
     loadData();
   }, [activeTab, loadData]);
@@ -198,7 +197,7 @@ export default function AdminPage() {
                   {newPost.cover_image && (
                     <div className={styles.preview}>
                       <img 
-                        src={`http://localhost:5000${newPost.cover_image}?t=${Date.now()}`} 
+                        src={`${newPost.cover_image}?t=${Date.now()}`} 
                         alt="Превью" 
                       />
                       <button type="button" onClick={() => setNewPost({...newPost, cover_image: ''})}>✕</button>
@@ -247,7 +246,7 @@ export default function AdminPage() {
                     {editingPost.cover_image && (
                       <div className={styles.preview}>
                         <img 
-                          src={`http://localhost:5000${editingPost.cover_image}?t=${Date.now()}`} 
+                          src={`${editingPost.cover_image}?t=${Date.now()}`} 
                           alt="Превью" 
                         />
                         <button type="button" onClick={() => setEditingPost({...editingPost, cover_image: ''})}>✕</button>
@@ -274,7 +273,7 @@ export default function AdminPage() {
                       <strong>{post.title}</strong>
                       {post.cover_image && (
                         <img 
-                          src={`http://localhost:5000${post.cover_image}?t=${refreshKey}`} 
+                          src={`${post.cover_image}?t=${refreshKey}`} 
                           alt="обложка" 
                           className={styles.thumbnail}
                         />

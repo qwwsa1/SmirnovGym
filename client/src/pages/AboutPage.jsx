@@ -35,8 +35,8 @@ export default function AboutPage() {
         <div className={styles.achievements}>
           <h2>Мои достижения</h2>
           <div className={styles.achievementsGrid}>
-            <div className={styles.achievementCard}>🏆 Мастер спорта</div>
-            <div className={styles.achievementCard}>📚 Сертифицированный тренер ISSA</div>
+            <div className={styles.achievementCard}>🏆 Мастер спорта по жиму лежа</div>
+            <div className={styles.achievementCard}>📚 Сертифицированный тренер Российской Федерации</div>
             <div className={styles.achievementCard}>💪 Помог 500+ клиентам</div>
             <div className={styles.achievementCard}>🎥 Автор 100+ тренировочных программ</div>
           </div>
@@ -45,10 +45,10 @@ export default function AboutPage() {
         <div className={styles.certificates}>
           <h2>Сертификаты и награды</h2>
           <div className={styles.certsGrid}>
-            <div className={styles.cert}>🏅 ISSA Certified Trainer</div>
-            <div className={styles.cert}>🏅 CrossFit Level 1</div>
-            <div className={styles.cert}>🏅 Nutrition Specialist</div>
-            <div className={styles.cert}>🏅 Персональный тренер года 2023</div>
+            <div className={styles.cert}>🏅 Российский сертификат "Фитнес Тренер"</div>
+            <div className={styles.cert}>🏅 Рекорд Тверской области по "Подъему штанги на бицепс"</div>
+            <div className={styles.cert}>🏅 Специалист по питанию</div>
+            <div className={styles.cert}>🏅 Персональный тренер года 2025</div>
           </div>
         </div>
 
